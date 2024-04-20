@@ -2,16 +2,12 @@ const chatForm = document.getElementById("chat-form");
 const chatMessages = document.querySelector(".chat-messages");
 const roomName = document.getElementById("room-name");
 const userList = document.getElementById("users");
-const numOnlineUsers = document.getElementById("numOnline")
-const imageUploade = document.getElementById("file-upload")
-
-
-
+const numOnlineUsers = document.getElementById("numOnline");
+const imageUpload = document.getElementById("file-upload");
 
 const { username, room } = Qs.parse(location.search, {
   ignoreQueryPrefix: true,
 });
-
 
 function closeBtn() {
   document.getElementById("sidebar").style.display = "none";
@@ -27,115 +23,113 @@ function openBtn() {
 
 const socket = io();
 
-socket.on("socketId",(id) =>{
-  return mySocketId = id;
-})
-
-
-
-socket.emit("joinRoom", { username, room });
-
-socket.on("roomUsers", ({ room, users }) => {
-  outputRoomName(room);
-  outputUsers(users);
-  onlineUserCount();
+socket.on("socketId", (id) => {
+  return (mySocketId = id);
 });
 
-socket.on("message", (msg) => {
-  outputMessage(msg);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-});
+if (username !== "pgkm" && username !== "riuma") {
+  // Redirect user to an error page or display a message
+  window.location.href = "/error.html";
+} else {
+  socket.emit("joinRoom", { username, room });
 
-socket.on("sysMessage", (msg) => {  
-  sysMessage(msg);
-})
-
-function outputRoomName(room) {
-  roomName.innerText = room;
-}
-
-function outputUsers(users) {
-  userList.innerHTML = `
-    ${users.map((user) => `<li>${user.username}</li>`).join("")}`;
-}
-
-chatForm.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const msgInput = document.getElementById("msg");
-  const msg = msgInput.value;
-  if (msg ==" ") {
-    return
-  }
-  socket.emit("chatMessage", {
-    text: msg,
-    sender: mySocketId
+  socket.on("roomUsers", ({ room, users }) => {
+    outputRoomName(room);
+    outputUsers(users);
+    onlineUserCount();
   });
-  msgInput.value = " ";
-});
 
-function outputMessage(message) {
-  const div = document.createElement("div");
-  div.innerHTML = ` <p class="meta">${message.username} <span>${message.time}</span></p>
-  <p class="text">
-    ${message.text.text}
-  </p>`;
+  socket.on("message", (msg) => {
+    outputMessage(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  });
 
-  if (message.text.sender === mySocketId) {
-    div.classList.add("message");
-  }else {
-    div.classList.add("other-message");
+  socket.on("sysMessage", (msg) => {
+    sysMessage(msg);
+  });
+
+  function outputRoomName(room) {
+    roomName.innerText = room;
   }
-  chatMessages.appendChild(div);
-}
 
-function sysMessage(msg) {
-  const div = document.createElement("div");
-  div.classList.add("sys-msg");
-  div.innerHTML = `<p>${msg.text}</p>`;
-  chatMessages.appendChild(div);
-}
-
-function onlineUserCount() {
-  const numOfonlineUser = userList.getElementsByTagName('li').length;
-  numOnlineUsers.textContent = numOfonlineUser;
-}
-
-
-// image 
-imageUploade.addEventListener("change", () => {
-  const file = imageUploade.files[0];
-  
-  // Check if the file size is greater than 1MB
-  if (file && file.size > 1048576) {
-    alert('The file is too large. Please upload a file smaller than 1MB.');
-  } else if (file) {
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      socket.emit("imageUpload", {
-        img: event.target.result,
-        sender: mySocketId
-      });
-    };
-    reader.readAsDataURL(file);
+  function outputUsers(users) {
+    userList.innerHTML = `${users.map((user) => `<li>${user.username}</li>`).join("")}`;
   }
-});
 
+  chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const msgInput = document.getElementById("msg");
+    const msg = msgInput.value;
+    if (msg.trim() === "") {
+      return;
+    }
+    socket.emit("chatMessage", {
+      text: msg,
+      sender: mySocketId,
+    });
+    msgInput.value = "";
+  });
 
-socket.on("receivedImage", image => {
-  imgOutput(image);
-  
-})
+  function outputMessage(message) {
+    const div = document.createElement("div");
+    div.innerHTML = `<p class="meta">${message.username} <span>${message.time}</span></p>
+    <p class="text">
+      ${message.text.text}
+    </p>`;
 
+    if (message.text.sender === mySocketId) {
+      div.classList.add("message");
+    } else {
+      div.classList.add("other-message");
+    }
+    chatMessages.appendChild(div);
+  }
 
- function imgOutput(data) {
-   const imgContainer = document.createElement("div");
-   imgContainer.classList.add("imgUpload");
-   const receiveImg = document.createElement("img");  
-   receiveImg.src = data.image;
-   if (data.sender != mySocketId) {
-     imgContainer.classList.add("other-imgUpload")
-   }
-   imgContainer.appendChild(receiveImg);
-   chatMessages.appendChild(imgContainer);
-   chatMessages.scrollTop = chatMessages.scrollHeight;
- }
+  function sysMessage(msg) {
+    const div = document.createElement("div");
+    div.classList.add("sys-msg");
+    div.innerHTML = `<p>${msg.text}</p>`;
+    chatMessages.appendChild(div);
+  }
+
+  function onlineUserCount() {
+    const numOfonlineUser = userList.getElementsByTagName("li").length;
+    numOnlineUsers.textContent = numOfonlineUser;
+  }
+
+  // image
+  imageUpload.addEventListener("change", () => {
+    const file = imageUpload.files[0];
+
+    // Check if the file size is greater than 1MB
+    if (file && file.size > 1048576) {
+      alert("The file is too large. Please upload a file smaller than 1MB.");
+    } else if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        socket.emit("imageUpload", {
+          img: event.target.result,
+          sender: mySocketId,
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  socket.on("receivedImage", (image) => {
+    imgOutput(image);
+  });
+
+  function imgOutput(data) {
+    const imgContainer = document.createElement("div");
+    imgContainer.classList.add("imgUpload");
+    const receiveImg = document.createElement("img");
+    receiveImg.src = data.image;
+    if (data.sender !== mySocketId) {
+      imgContainer.classList.add("other-imgUpload");
+    }
+    imgContainer.appendChild(receiveImg);
+    chatMessages.appendChild(imgContainer);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+}
